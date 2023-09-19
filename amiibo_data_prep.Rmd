@@ -1,0 +1,81 @@
+---
+title: "Amiibo_Data_Cleanup"
+author: "Dallas Radke"
+date: "2023-07-03"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(readr)
+library(readxl)
+library(openxlsx)
+library(lubridate)
+library(janitor)
+
+options(java.parameters = "-Xmx4g")
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r initial setup}
+
+# pull in today's date for reference
+curr_date <- date(Sys.Date())
+
+# set file location for reference
+FileLocation <- "/Users/drad/Documents/Data_Projects/Amiibo_Dashboard/"
+
+```
+
+```{r pull in amiibo file}
+
+amiibo_df <- read_excel(paste0(FileLocation, "amiibo_list.xlsx"))
+
+amiibo_df %>% 
+  filter(amiibo_name == "Detective Pikachu")
+
+```
+
+```{r clean up amiibo_df}
+
+# list of non-amiibos to filter out
+non_amiibo_list <- list('Power-Up Band',
+                        'Animal Crossing Cards - Series 5',
+                        'Animal Crossing: New Leaf - Welcome amiibo series',
+                        'Animal Crossing Sanrio Collaboration Pack',
+                        'Animal Crossing Cards - Series 4',
+                        'Animal Crossing Cards - Series 3',
+                        'Shadow Mewtwo',
+                        'Animal Crossing Cards - Series 2',
+                        'Animal Crossing Cards - Series 1'
+)
+
+
+# filter out non_amiibos
+amiibo_df_final <- amiibo_df %>% 
+  filter(!amiibo_name %in% non_amiibo_list)
+
+# de-dupe records
+amiibo_df_final <- distinct(amiibo_df_final)
+
+
+# format release_date & create new name field
+amiibo_df_final <- amiibo_df_final %>% 
+  mutate(amiibo_series = str_replace_all(amiibo_series, "^Available\\s+[0-9]{2}\\/[0-9]{2}\\/[0-9]{2}", "Other")) %>% 
+  mutate(release_date = str_remove_all(release_date, "[a-zA-Z\\s]")) %>% 
+  mutate(release_date = as.Date(release_date, '%m/%d/%y')) %>% 
+  mutate(amiibo_name_series = paste(amiibo_name, amiibo_series, sep = "  |  ")) %>% 
+  mutate(amiibo_name_series = str_remove_all(amiibo_name_series, "series")) %>% 
+  mutate(webscrape_date = curr_date)
+
+amiibo_df_final 
+
+```
+
+```{r export final df}
+
+write.xlsx(amiibo_df_final, paste0(FileLocation, "Amiibo_Data_Clean.xlsx"))
+
+```
+
+
